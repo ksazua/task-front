@@ -12,19 +12,30 @@ const emit = defineEmits<{ (e:'edit', task: Task):void; (e:'delete', id:string):
 <template>
   <Card class="rounded-xl sm:rounded-2xl border bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer" @click="emit('edit', task)">
     <CardContent class="p-3 sm:p-4 space-y-2 sm:space-y-3">
-      <!-- header: título y descripción -->
+      <!-- header: título, categoría y descripción -->
       <div>
-        <h4 class="font-semibold text-xs sm:text-sm leading-tight text-gray-900">{{ task.title }}</h4>
+        <div class="flex items-start justify-between gap-2">
+          <h4 class="font-semibold text-xs sm:text-sm leading-tight text-gray-900 flex-1">{{ task.title }}</h4>
+          <span v-if="task.category" class="text-[10px] sm:text-[11px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-md whitespace-nowrap">
+            {{ task.category }}
+          </span>
+        </div>
         <p v-if="task.description" class="mt-1 text-[11px] sm:text-xs text-gray-500 line-clamp-2">
           {{ task.description }}
         </p>
       </div>
 
       <!-- fecha límite -->
-      <div class="flex items-center text-[11px] sm:text-xs">
+      <div v-if="task.dueDate" class="flex items-center text-[11px] sm:text-xs">
         <div class="inline-flex items-center gap-1 sm:gap-1.5 text-gray-600">
           <Calendar :size="12" class="sm:w-[14px] sm:h-[14px] text-gray-400" /> 
           <span>{{ dayjs(task.dueDate).format('DD MMM') }}</span>
+        </div>
+      </div>
+      <div v-else class="flex items-center text-[11px] sm:text-xs">
+        <div class="inline-flex items-center gap-1 sm:gap-1.5 text-gray-400">
+          <Calendar :size="12" class="sm:w-[14px] sm:h-[14px]" /> 
+          <span>Sin fecha</span>
         </div>
       </div>
 

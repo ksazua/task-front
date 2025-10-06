@@ -17,6 +17,12 @@ import dayjs from 'dayjs'
 
 const tasks = useTasksStore()
 
+// Cargar tareas al montar el componente
+onMounted(async () => {
+  console.log('🚀 Cargando tareas desde la API (Kanban)...')
+  await tasks.fetchTasks()
+})
+
 const dialogOpen = ref(false)
 const dialogMode = ref<'create'|'edit'>('create')
 const dialogInitial = ref<Partial<Task> & { status?: TaskStatus }>({ status: 'planned' })
@@ -116,7 +122,27 @@ function openBulkCreate() {
       <!-- Board -->
       <div class="flex-1 overflow-auto bg-white">
         <div class="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6 pt-4 sm:pt-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <!-- Loading state -->
+          <div v-if="tasks.loading" class="flex items-center justify-center py-12">
+            <div class="flex flex-col items-center gap-3">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p class="text-sm text-gray-500">Cargando tareas...</p>
+            </div>
+          </div>
+
+          <!-- Error state -->
+          <div v-else-if="tasks.error" class="flex items-center justify-center py-12">
+            <div class="flex flex-col items-center gap-3 text-center">
+              <div class="text-red-500 text-lg">⚠️</div>
+              <p class="text-sm text-red-600">{{ tasks.error }}</p>
+              <Button @click="tasks.fetchTasks(); tasks.clearError()" variant="outline" size="sm">
+                Reintentar
+              </Button>
+            </div>
+          </div>
+
+          <!-- Kanban Board -->
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <BoardColumn
               title="Planned"
               status="planned"
@@ -145,6 +171,7 @@ function openBulkCreate() {
               @drop-to="onDrop"
             />
           </div>
+          <!-- End of Kanban Board -->
         </div>
       </div>
     </SidebarInset>

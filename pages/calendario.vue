@@ -13,6 +13,12 @@ import dayjs from 'dayjs'
 
 const tasks = useTasksStore()
 
+// Cargar tareas al montar el componente
+onMounted(async () => {
+  console.log('🚀 Cargando tareas desde la API (Calendario)...')
+  await tasks.fetchTasks()
+})
+
 // Estado
 const currentDate = ref(dayjs().format('YYYY-MM-DD'))
 const selectedTask = ref<Task | null>(null)

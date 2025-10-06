@@ -19,6 +19,12 @@ import dayjs from 'dayjs'
 
 const tasks = useTasksStore()
 
+// Cargar tareas al montar el componente
+onMounted(async () => {
+  console.log('🚀 Cargando tareas desde la API...')
+  await tasks.fetchTasks()
+})
+
 const dialogOpen = ref(false)
 const dialogMode = ref<'create'|'edit'>('create')
 const dialogInitial = ref<Partial<Task> & { status?: TaskStatus }>({ status: 'planned' })
@@ -188,7 +194,27 @@ function getStatusColor(status: TaskStatus): string {
       <!-- Content -->
       <div class="flex-1 overflow-auto bg-background">
         <div class="px-3 sm:px-4 md:px-6 py-4 sm:py-6 max-w-5xl mx-auto">
-          <div class="space-y-8">
+          <!-- Loading state -->
+          <div v-if="tasks.loading" class="flex items-center justify-center py-12">
+            <div class="flex flex-col items-center gap-3">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p class="text-sm text-gray-500">Cargando tareas...</p>
+            </div>
+          </div>
+
+          <!-- Error state -->
+          <div v-else-if="tasks.error" class="flex items-center justify-center py-12">
+            <div class="flex flex-col items-center gap-3 text-center">
+              <div class="text-red-500 text-lg">⚠️</div>
+              <p class="text-sm text-red-600">{{ tasks.error }}</p>
+              <Button @click="tasks.fetchTasks()" variant="outline" size="sm">
+                Reintentar
+              </Button>
+            </div>
+          </div>
+
+          <!-- Tasks content -->
+          <div v-else class="space-y-8">
             <!-- Planned Tasks -->
             <section v-if="tasksByStatus.planned.length > 0">
               <div class="flex items-center gap-2 mb-4">
@@ -415,6 +441,7 @@ function getStatusColor(status: TaskStatus): string {
               </Button>
             </div>
           </div>
+          <!-- End of tasks content -->
         </div>
       </div>
     </SidebarInset>
