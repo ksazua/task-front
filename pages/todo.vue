@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import AppSidebar from '~/components/kanban/AppSidebar.vue'
 import KanbanHeader from '~/components/kanban/KanbanHeader.vue'
+
+// Nota: La autenticación es manejada por middleware/auth.global.ts
+
 import TaskDialog from '~/components/kanban/TaskDialog.vue'
 import { SidebarProvider, SidebarInset } from '~/components/ui/sidebar'
 import { useTasksStore, type Task, type TaskStatus } from '~/stores/tasks'

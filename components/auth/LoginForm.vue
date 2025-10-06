@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { Mail, Lock, Eye, EyeOff, CircleUserRound } from 'lucide-vue-next'
+import { Mail, Lock, Eye, EyeOff } from 'lucide-vue-next'
+import { useAuth } from '~/composables/useAuth'
+import { toast } from 'vue-sonner'
+
+const { login } = useAuth()
 
 const email = ref('')
 const password = ref('')
@@ -14,10 +18,39 @@ function validate() {
   errors.password = !password.value ? 'Ingresa tu contraseña' : undefined
   return !errors.email && !errors.password
 }
-function onSubmit() {
+
+async function onSubmit() {
   if (!validate()) return
+  
   loading.value = true
-  setTimeout(() => { loading.value = false; navigateTo('/') }, 700)
+  
+  try {
+    const result = await login({
+      email: email.value,
+      password: password.value
+    })
+
+    console.log('Login result:', result) // Debug
+
+    if (result.success) {
+      // Mostrar toast de éxito
+      toast.success(result.message || 'Inicio de sesión exitoso')
+      
+      // Esperar un momento para que las cookies se guarden
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Redirigir al inicio usando navigateTo
+      await navigateTo('/inicio', { replace: true })
+    } else {
+      // Mostrar toast de error
+      toast.error(result.message || 'Error al iniciar sesión')
+    }
+  } catch (error: any) {
+    console.error('Submit error:', error)
+    toast.error(error.message || 'Error al conectar con el servidor')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

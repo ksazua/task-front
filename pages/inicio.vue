@@ -12,6 +12,9 @@ import { Button } from '~/components/ui/button'
 import { X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 
+// Nota: La autenticación es manejada por middleware/auth.global.ts
+// No necesitamos definePageMeta aquí
+
 const tasks = useTasksStore()
 
 const dialogOpen = ref(false)

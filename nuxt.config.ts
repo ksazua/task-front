@@ -25,6 +25,18 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    public: { appName: 'TaskFront' }
+    // Variables privadas (solo server)
+    sessionSecret: process.env.SESSION_SECRET || 'default-secret-key-change-in-production',
+    
+    // Variables públicas
+    public: { 
+      appName: 'TaskFront',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000/api/v1'
+    }
   },
+
+  // Suprimir warnings de componentes duplicados (shadcn-nuxt usa index.ts)
+  ignore: [
+    '**/components/ui/**/index.ts'
+  ],
 });

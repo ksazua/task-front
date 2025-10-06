@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import AppSidebar from '~/components/kanban/AppSidebar.vue'
 import CalendarHeader from '~/components/calendario/CalendarHeader.vue'
+
+// Nota: La autenticación es manejada por middleware/auth.global.ts
+
 import CalendarGrid from '~/components/calendario/CalendarGrid.vue'
 import TaskDetailSheet from '~/components/calendario/TaskDetailSheet.vue'
 import TaskDialog from '~/components/kanban/TaskDialog.vue'
