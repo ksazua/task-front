@@ -30,8 +30,6 @@ async function onSubmit() {
       password: password.value
     })
 
-    console.log('Login result:', result) // Debug
-
     if (result.success) {
       // Mostrar toast de éxito
       toast.success(result.message || 'Inicio de sesión exitoso')
@@ -46,7 +44,6 @@ async function onSubmit() {
       toast.error(result.message || 'Error al iniciar sesión')
     }
   } catch (error: any) {
-    console.error('Submit error:', error)
     toast.error(error.message || 'Error al conectar con el servidor')
   } finally {
     loading.value = false
@@ -64,44 +61,46 @@ async function onSubmit() {
       </CardHeader>
 
       <CardContent class="space-y-4">
-        <div class="grid gap-2">
-          <Label for="email">Correo</Label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <Mail :size="18" />
-            </span>
-            <Input id="email" v-model="email" type="email" placeholder="tu@email.com"
-                   :aria-invalid="!!errors.email" :class="['pl-10', errors.email && 'ring-2 ring-destructive/20 border-destructive']"/>
+        <form @submit.prevent="onSubmit">
+          <div class="grid gap-2">
+            <Label for="email">Correo</Label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <Mail :size="18" />
+              </span>
+              <Input id="email" v-model="email" type="email" placeholder="tu@email.com"
+                     :aria-invalid="!!errors.email" :class="['pl-10', errors.email && 'ring-2 ring-destructive/20 border-destructive']"/>
+            </div>
+            <p v-if="errors.email" class="text-destructive text-sm">{{ errors.email }}</p>
           </div>
-          <p v-if="errors.email" class="text-destructive text-sm">{{ errors.email }}</p>
-        </div>
 
-        <div class="grid gap-2">
-          <Label for="password">Contraseña</Label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              <Lock :size="18" />
-            </span>
-            <Input id="password" v-model="password" :type="show ? 'text' : 'password'" placeholder="••••••••"
-                   :aria-invalid="!!errors.password" :class="['pl-10 pr-10', errors.password && 'ring-2 ring-destructive/20 border-destructive']"/>
-            <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    @click="show = !show">
-              <Eye v-if="!show" :size="18" />
-              <EyeOff v-else :size="18" />
-            </button>
+          <div class="grid gap-2 mt-4">
+            <Label for="password">Contraseña</Label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <Lock :size="18" />
+              </span>
+              <Input id="password" v-model="password" :type="show ? 'text' : 'password'" placeholder="••••••••"
+                     :aria-invalid="!!errors.password" :class="['pl-10 pr-10', errors.password && 'ring-2 ring-destructive/20 border-destructive']"/>
+              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      @click="show = !show">
+                <Eye v-if="!show" :size="18" />
+                <EyeOff v-else :size="18" />
+              </button>
+            </div>
+            <p v-if="errors.password" class="text-destructive text-sm">{{ errors.password }}</p>
           </div>
-          <p v-if="errors.password" class="text-destructive text-sm">{{ errors.password }}</p>
-        </div>
 
-        <div class="flex items-center justify-start">
-          <label class="inline-flex items-center gap-2 text-sm">
-            <Checkbox v-model:checked="remember" /> Recordarme
-          </label>
-        </div>
+          <div class="flex items-center justify-start mt-4">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <Checkbox v-model:checked="remember" /> Recordarme
+            </label>
+          </div>
 
-        <Button class="w-full" :disabled="loading" @click="onSubmit">
-          {{ loading ? 'Entrando…' : 'Iniciar Sesión' }}
-        </Button>
+          <Button type="submit" class="w-full mt-4" :disabled="loading">
+            {{ loading ? 'Entrando…' : 'Iniciar Sesión' }}
+          </Button>
+        </form>
 
         <!-- Social sign-in removed per request -->
       </CardContent>

@@ -31,12 +31,16 @@ function onChange(e: any) {
   if (e.added) {
     const task = e.added.element
     if (task) {
+      // Solo llamar a move, que ya maneja la API
       useTasksStore().move(task.id, props.status, e.added.newIndex)
     }
   }
-  // Siempre emitir el nuevo orden cuando hay cambios
-  const newOrder = props.tasks.map(t => t.id)
-  emit('drop-to', props.status, newOrder)
+  
+  // Para reordenamientos dentro de la misma columna
+  if (e.moved) {
+    const newOrder = props.tasks.map(t => t.id)
+    emit('drop-to', props.status, newOrder)
+  }
 }
 </script>
 

@@ -60,9 +60,7 @@ export const useAuth = () => {
         message: error.data?.message || 'Sesión no encontrada'
       }
     }
-  }
-
-  // Login (el servidor maneja la cookie httpOnly)
+  }  // Login (el servidor maneja la cookie httpOnly)
   const login = async (credentials: LoginCredentials): Promise<LoginResult> => {
     try {
       const response = await $fetch<any>('/api/auth/login', {
@@ -71,13 +69,9 @@ export const useAuth = () => {
         credentials: 'include' // Incluir cookies httpOnly
       })
 
-      console.log('Login response completo:', response)
-      console.log('Usuario recibido:', response.user)
-
       if (response.success && response.user) {
         // Guardar usuario en estado (el token está en httpOnly cookie)
         user.value = response.user
-        console.log('Usuario guardado en estado:', user.value)
         
         return { 
           success: true, 
@@ -92,8 +86,6 @@ export const useAuth = () => {
         statusCode: 401
       }
     } catch (error: any) {
-      console.error('Login error:', error)
-      
       const statusCode = error.statusCode || error.response?.status || 500
       const message = error.data?.message || error.message || 'Error al conectar con el servidor'
       
@@ -107,18 +99,37 @@ export const useAuth = () => {
 
   // Logout (limpia la cookie httpOnly del servidor)
   const logout = async () => {
+    // Limpiar estado local primero
+    user.value = null
+    
     try {
       await $fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       })
     } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      // Limpiar estado local
-      user.value = null
-      await router.push('/login')
+      // Error silencioso en logout
     }
+    
+    // Forzar navegación después de limpiar estado
+    await navigateTo('/login', { replace: true })
+  }
+
+  // Cerrar sesión por expiración de token (sin llamar al backend)
+  const clearSession = async () => {
+    // Limpiar estado local
+    user.value = null
+    
+    // Limpiar almacenamiento local
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear()
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear()
+    }
+    
+    // Redireccionar a login usando navigateTo
+    await navigateTo('/login', { replace: true })
   }
 
   // Verificar autenticación (obtiene sesión del servidor)
@@ -132,6 +143,7 @@ export const useAuth = () => {
     isAuthenticated,
     login,
     logout,
+    clearSession,
     checkAuth,
     fetchSession
   }

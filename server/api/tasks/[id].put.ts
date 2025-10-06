@@ -1,5 +1,4 @@
 import { getUserSession } from '~/server/utils/session'
-import { fetchFromRailway } from '~/server/utils/railway'
 import type { ApiTasksResponse, CreateTaskPayload } from '~/types/api'
 
 export default defineEventHandler(async (event) => {
@@ -8,7 +7,6 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event) as Partial<CreateTaskPayload>
   
   try {
-    // Obtener la sesión del usuario
     const session = await getUserSession(event)
     
     if (!session?.accessToken) {
@@ -18,22 +16,33 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.log('🔑 ACCESS TOKEN ENVIADO (UPDATE):', session.accessToken)
-    console.log('👤 USUARIO:', session.user?.email || session.user?.name || 'Usuario desconocido')
-    console.log('🔄 ACTUALIZANDO TAREA ID:', taskId)
-    console.log('📝 DATOS ACTUALIZACION:', body)
+    // Preparar datos en el formato que espera el backend
+    const updateData = {
+      ...(body.title && { title: body.title }),
+      ...(body.description !== undefined && { description: body.description }),
+      ...(body.category && { category: body.category }),
+      ...(body.status && { status: body.status }),
+      ...(body.start_date && { start_date: body.start_date }),
+      ...(body.deadline && { deadline: body.deadline })
+    }
 
-    // Llamar a la API externa para actualizar tarea
     const apiUrl = `${config.public.apiBase}/tasks/${taskId}`
-    console.log('🔗 Updating task at:', apiUrl)
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${session.accessToken}`,
+      'User-Agent': 'Nuxt-Task-Frontend',
+      'X-Requested-With': 'XMLHttpRequest',
+    }
     
-    const response = await fetchFromRailway(apiUrl, session.accessToken, 'PUT', body) as ApiTasksResponse
+    const response = await $fetch<ApiTasksResponse>(apiUrl, {
+      method: 'PUT',
+      headers,
+      body: updateData
+    })
 
-    console.log('✅ Task updated successfully:', response)
     return response
   } catch (error: any) {
-    console.error('❌ Error updating task:', error)
-    
     const statusCode = error.statusCode || error.response?.status || 500
     const errorMessage = error.message || error.data?.message || 'Error al actualizar tarea'
     

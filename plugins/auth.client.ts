@@ -1,16 +1,20 @@
 export default defineNuxtPlugin(async () => {
-  const { fetchSession, user } = useAuth()
+  if (!process.client) {
+    return
+  }
 
-  // Obtener sesión del servidor al cargar la app
-  if (process.client) {
-    try {
-      await fetchSession()
-      console.log('Plugin auth: sesión obtenida del servidor', {
-        hasUser: !!user.value,
-        user: user.value
-      })
-    } catch (error) {
-      console.log('Plugin auth: no hay sesión activa')
-    }
+  const route = useRoute()
+  const publicRoutes = ['/login', '/registro', '/']
+
+  if (publicRoutes.includes(route.path)) {
+    return
+  }
+
+  const { fetchSession } = useAuth()
+
+  try {
+    await fetchSession()
+  } catch (error) {
+    // Error silencioso al obtener sesión
   }
 })

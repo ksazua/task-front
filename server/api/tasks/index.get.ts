@@ -1,4 +1,3 @@
-// server/api/tasks.ts
 import { getUserSession } from '~/server/utils/session'
 import type { ApiTasksResponse } from '~/types/api'
 
@@ -6,7 +5,6 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
 
   try {
-    // 1️⃣ Obtener sesión del usuario
     const session = await getUserSession(event)
 
     if (!session?.accessToken) {
@@ -16,14 +14,26 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // 2️⃣ Logs de diagnóstico
-    console.log('🔑 ACCESS TOKEN ENVIADO:', session.accessToken)
-    console.log('👤 USUARIO:', session.user?.email || session.user?.name || 'Usuario desconocido')
+    // Extraer query parameters del request
+    const query = getQuery(event)
+    const queryParams = new URLSearchParams()
+    
+    // Agregar filtros disponibles
+    if (query.sort_by) queryParams.append('sort_by', String(query.sort_by))
+    if (query.order) queryParams.append('order', String(query.order))
+    if (query.status) queryParams.append('status', String(query.status))
+    if (query.category) queryParams.append('category', String(query.category))
+    if (query.start_date_from) queryParams.append('start_date_from', String(query.start_date_from))
+    if (query.start_date_to) queryParams.append('start_date_to', String(query.start_date_to))
+    if (query.deadline_from) queryParams.append('deadline_from', String(query.deadline_from))
+    if (query.deadline_to) queryParams.append('deadline_to', String(query.deadline_to))
+    if (query.created_from) queryParams.append('created_from', String(query.created_from))
+    if (query.created_to) queryParams.append('created_to', String(query.created_to))
+    if (query.search) queryParams.append('search', String(query.search))
 
-    // 3️⃣ Construir URL correcta (con slash final para evitar 307)
-    const apiUrl = `${config.public.apiBase}/tasks/`
-
-    // 4️⃣ Configurar headers
+    const queryString = queryParams.toString()
+    const apiUrl = `${config.public.apiBase}/tasks/${queryString ? '?' + queryString : ''}`
+    
     const headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -32,40 +42,13 @@ export default defineEventHandler(async (event) => {
       'X-Requested-With': 'XMLHttpRequest',
     }
 
-    console.log('🔗 Calling external API:', apiUrl)
-    console.log('📋 Headers:', headers)
-
-    // 5️⃣ Llamar al backend
     const response = await $fetch<ApiTasksResponse>(apiUrl, {
       method: 'GET',
       headers,
-      // redirect: 'manual', // opcional si quieres controlar 307 manualmente
-    })
-
-    console.log('✅ API Response received:', {
-      success: response.success,
-      message: response.message,
-      taskCount: response.data?.length || 0,
     })
 
     return response
   } catch (error: any) {
-    console.error('❌ Error en /api/tasks:', error)
-    console.error('🔍 Error details:', {
-      statusCode: error.statusCode,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.data,
-      message: error.message,
-      cause: error.cause,
-    })
-
-    // Si hay respuesta del servidor, log más detalles
-    if (error.response) {
-      console.error('📋 Response headers:', error.response.headers)
-      console.error('📄 Response body:', error.response._data || error.response.data)
-    }
-
     const statusCode = error.statusCode || error.response?.status || 500
     const errorMessage = error.message || error.data?.message || 'Error al obtener tareas'
 
@@ -75,7 +58,6 @@ export default defineEventHandler(async (event) => {
       data: {
         success: false,
         message: errorMessage,
-        details: error.data || error.response?._data,
       },
     })
   }

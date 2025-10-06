@@ -24,14 +24,13 @@ async function encryptSession(session: Session): Promise<string> {
   const secret = config.sessionSecret
   
   if (!secret || secret === 'default-secret-key-change-in-production') {
-    console.warn('⚠️ WARNING: Usando SESSION_SECRET por defecto. Configura SESSION_SECRET en producción!')
+    throw new Error('SESSION_SECRET debe estar configurado en producción')
   }
 
   try {
     const sealed = await sealData(session, { password: secret, ttl: SESSION_MAX_AGE })
     return sealed
   } catch (error) {
-    console.error('Error encriptando sesión:', error)
     throw new Error('Error al encriptar sesión')
   }
 }
@@ -47,7 +46,6 @@ async function decryptSession(encrypted: string): Promise<Session | null> {
     const unsealed = await unsealData<Session>(encrypted, { password: secret, ttl: SESSION_MAX_AGE })
     return unsealed
   } catch (error) {
-    console.error('Error desencriptando sesión:', error)
     return null
   }
 }
@@ -70,17 +68,8 @@ export async function setUserSession(event: H3Event, session: Session) {
       ...(isProduction && { domain: undefined }) // No especificar domain, usar default
     }
     
-    console.log('🍪 Configuración de cookie:', {
-      name: SESSION_COOKIE_NAME,
-      options: cookieOptions,
-      environment: isProduction ? 'production' : 'development'
-    })
-    
     setCookie(event, SESSION_COOKIE_NAME, encrypted, cookieOptions)
-    
-    console.log('✅ Sesión guardada (encriptada con iron-session AES-256-GCM)')
   } catch (error) {
-    console.error('Error guardando sesión:', error)
     throw error
   }
 }
@@ -90,46 +79,26 @@ export async function setUserSession(event: H3Event, session: Session) {
  */
 export async function getUserSession(event: H3Event): Promise<Session | null> {
   try {
-    console.log('🔍 Diagnóstico de sesión:')
-    console.log('  - URL:', event.node.req.url)
-    console.log('  - Method:', event.node.req.method)
-    console.log('  - User-Agent:', event.node.req.headers['user-agent'])
-    console.log('  - Cookie header:', event.node.req.headers.cookie)
-    
     const encrypted = getCookie(event, SESSION_COOKIE_NAME)
-    console.log('  - Session cookie found:', !!encrypted)
-    console.log('  - Cookie name looking for:', SESSION_COOKIE_NAME)
     
     if (!encrypted) {
-      console.log('❌ No se encontró cookie de sesión')
       return null
     }
     
-    console.log('🔓 Desencriptando sesión...')
     const session = await decryptSession(encrypted)
     
     if (!session) {
-      console.log('❌ No se pudo desencriptar la sesión')
       return null
     }
     
-    console.log('✅ Sesión encontrada:', {
-      userId: session.user?.id,
-      email: session.user?.email,
-      expiresAt: new Date(session.expiresAt),
-      hasToken: !!session.accessToken
-    })
-    
     // Verificar si la sesión ha expirado
     if (session.expiresAt && Date.now() > session.expiresAt) {
-      console.log('⚠️ Sesión expirada')
       clearUserSession(event)
       return null
     }
     
     return session
   } catch (error) {
-    console.error('Error obteniendo sesión:', error)
     return null
   }
 }
@@ -146,7 +115,6 @@ export function clearUserSession(event: H3Event) {
     sameSite: isProduction ? 'none' as const : 'lax' as const,
     path: '/'
   })
-  console.log('✅ Sesión eliminada')
 }
 
 /**

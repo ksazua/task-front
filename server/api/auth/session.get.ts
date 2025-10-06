@@ -24,8 +24,6 @@ export default defineEventHandler(async (event) => {
       expiresAt: session.expiresAt
     }
   } catch (error: any) {
-    console.error('Session check error:', error)
-    
     throw createError({
       statusCode: 401,
       statusMessage: 'Sesión inválida',

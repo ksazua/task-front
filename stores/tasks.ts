@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { nanoid } from 'nanoid'
 import dayjs from 'dayjs'
 import type { ApiTask, CreateTaskPayload } from '~/types/api'
-import { STATUS_MAP, REVERSE_STATUS_MAP } from '~/types/api'
+import { STATUS_MAP, REVERSE_STATUS_MAP, type TaskFilters } from '~/types/api'
+import { toast } from 'vue-sonner'
 
 export type TaskStatus = 'planned' | 'in_progress' | 'done'
 export type Tag = { id: string; name: string; color?: string }
@@ -13,7 +14,7 @@ export interface Task {
   description?: string
   startDate?: string  // ISO - fecha de inicio
   dueDate?: string  // ISO
-  tags: Tag[]
+  tags?: Tag[]
   status: TaskStatus
   createdAt: string // ISO
   category?: string
@@ -148,7 +149,7 @@ export const useTasksStore = defineStore('tasks', {
         list = list.filter(t =>
           t.title.toLowerCase().includes(q) ||
           (t.description ?? '').toLowerCase().includes(q) ||
-          t.tags.some(tag => tag.name.toLowerCase().includes(q))
+          t.tags?.some(tag => tag.name.toLowerCase().includes(q))
         )
       }
 
@@ -168,7 +169,7 @@ export const useTasksStore = defineStore('tasks', {
 
       // Filtrar por tag
       if (state.tagFilter !== 'all') {
-        list = list.filter(t => t.tags.some(tag => tag.id === state.tagFilter))
+        list = list.filter(t => t.tags?.some(tag => tag.id === state.tagFilter))
       }
 
       // Ordenar
@@ -186,20 +187,18 @@ export const useTasksStore = defineStore('tasks', {
   },
   actions: {
     // Cargar tareas desde la API
-    async fetchTasks() {
+    async fetchTasks(filters?: TaskFilters) {
       this.loading = true
       this.error = null
       
       try {
         const { fetchTasks } = useBackendTasks()
-        const response = await fetchTasks()
+        const response = await fetchTasks(filters)
         
         if (response.success && response.data) {
           this.tasks = response.data.map(apiTaskToLocal)
-          console.log('📋 Tasks loaded from API:', this.tasks.length)
         }
       } catch (error: any) {
-        console.error('❌ Error loading tasks:', error)
         this.error = error.message || 'Error al cargar tareas'
         // En caso de error, usar datos seed para desarrollo
         this.tasks = seed()
@@ -219,11 +218,9 @@ export const useTasksStore = defineStore('tasks', {
         if (response.success && response.data && response.data.length > 0) {
           const newTask = apiTaskToLocal(response.data[0])
           this.tasks.unshift(newTask)
-          console.log('✅ Task created:', newTask)
           return newTask
         }
       } catch (error: any) {
-        console.error('❌ Error creating task:', error)
         this.error = error.message || 'Error al crear tarea'
         
         // Fallback: crear tarea local
@@ -270,10 +267,8 @@ export const useTasksStore = defineStore('tasks', {
           if (i !== -1) {
             this.tasks[i] = { ...this.tasks[i], ...patch }
           }
-          console.log('✅ Task updated:', id)
         }
       } catch (error: any) {
-        console.error('❌ Error updating task:', error)
         this.error = error.message || 'Error al actualizar tarea'
         
         // Fallback: actualizar solo local
@@ -297,10 +292,8 @@ export const useTasksStore = defineStore('tasks', {
         if (response.success) {
           // Eliminar del estado local
           this.tasks = this.tasks.filter(t => t.id !== id)
-          console.log('✅ Task deleted:', id)
         }
       } catch (error: any) {
-        console.error('❌ Error deleting task:', error)
         this.error = error.message || 'Error al eliminar tarea'
         
         // Fallback: eliminar solo local
@@ -314,14 +307,50 @@ export const useTasksStore = defineStore('tasks', {
       if (!task) return
 
       const oldStatus = task.status
-      task.status = to // Actualizar optimísticamente
-
+      
+      // Generar mensaje de toast basado en el estado
+      const getStatusLabel = (status: TaskStatus) => {
+        const labels = {
+          'planned': 'Pendiente',
+          'in_progress': 'En Progreso', 
+          'done': 'Completado'
+        }
+        return labels[status]
+      }
+      
       try {
-        await this.update(id, { status: to })
-      } catch (error) {
+        // Actualizar optimísticamente
+        task.status = to
+        
+        // Llamar a la API
+        const { updateTask } = useBackendTasks()
+        const taskId = parseInt(id, 10)
+        
+        if (isNaN(taskId)) {
+          throw new Error('ID de tarea inválido')
+        }
+
+        const payload = localTaskToPayload({ status: to })
+        const response = await updateTask(taskId, payload)
+        
+        if (response.success && response.data && response.data.length > 0) {
+          // Actualizar con los datos reales de la API
+          const updatedTask = apiTaskToLocal(response.data[0])
+          const taskIndex = this.tasks.findIndex(t => t.id === id)
+          if (taskIndex !== -1) {
+            this.tasks[taskIndex] = { ...this.tasks[taskIndex], ...updatedTask }
+          }
+          
+          // Mostrar toast de éxito
+          toast.success(`Tarea movida a "${getStatusLabel(to)}"`)
+        }
+      } catch (error: any) {
         // Revertir en caso de error
         task.status = oldStatus
-        throw error
+        this.error = error.message || 'Error al mover tarea'
+        
+        // Mostrar toast de error
+        toast.error('Error al mover la tarea')
       }
     },
 

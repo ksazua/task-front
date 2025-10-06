@@ -65,11 +65,17 @@ function changeYear(year: any) {
 
 <template>
   <header class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 border-b bg-background px-3 sm:px-4 md:px-6 py-3 shrink-0">
-    <!-- Left: Sidebar trigger y título -->
-    <div class="flex items-center gap-3 flex-1">
+    <!-- Left: Sidebar trigger y breadcrumb -->
+    <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
       <SidebarTrigger class="-ml-1" />
       <Separator orientation="vertical" class="h-5 hidden sm:block" />
-      <h1 class="text-xl font-semibold capitalize">{{ currentMonth }}</h1>
+      <nav class="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm overflow-hidden">
+        <span class="font-semibold text-foreground truncate">
+          Calendario
+        </span>
+      </nav>
+      <div class="hidden sm:block text-muted-foreground">•</div>
+      <h1 class="text-lg sm:text-xl font-semibold capitalize truncate">{{ currentMonth }}</h1>
     </div>
 
     <!-- Right: Controles -->

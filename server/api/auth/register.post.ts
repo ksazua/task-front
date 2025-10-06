@@ -5,24 +5,25 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
 
   try {
-    // Llamar al backend API
-    const response = await $fetch<any>(`${config.public.apiBase}/auth/login`, {
+    // Llamar al backend API para registro
+    const response = await $fetch<any>(`${config.public.apiBase}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: {
         email: body.email,
+        name: body.name,
         password: body.password
       }
     })
 
-    // Si el login fue exitoso, crear sesión segura
+    // Si el registro fue exitoso, crear sesión segura automáticamente
     if (response.success && response.data?.access_token) {
       // Calcular fecha de expiración (7 días)
       const expiresAt = Date.now() + (60 * 60 * 24 * 7 * 1000)
       
-      // Guardar sesión en cookie httpOnly (async)
+      // Guardar sesión en cookie httpOnly (async) - auto login después del registro
       await setUserSession(event, {
         user: response.data.user,
         accessToken: response.data.access_token,
@@ -30,18 +31,25 @@ export default defineEventHandler(async (event) => {
         expiresAt
       })
 
-      // Retornar respuesta sin tokens (ya están en cookie segura)
       return {
         success: true,
-        message: response.message || 'Inicio de sesión exitoso',
-        user: response.data.user
+        message: response.message || 'Registro exitoso',
+        data: response.data.user
+      }
+    }
+
+    if (response.success) {
+      return {
+        success: true,
+        message: response.message || 'Registro exitoso',
+        data: response.data
       }
     }
 
     // Retornar error del backend
     return {
       success: false,
-      message: response.message || 'Error de autenticación'
+      message: response.message || 'Error en el registro'
     }
   } catch (error: any) {
     // Extraer información del error del backend
@@ -52,10 +60,10 @@ export default defineEventHandler(async (event) => {
     if (errorData.success === false) {
       throw createError({
         statusCode: statusCode,
-        statusMessage: errorData.message || 'Error de autenticación',
+        statusMessage: errorData.message || 'Error de registro',
         data: {
           success: false,
-          message: errorData.message || 'Error de autenticación'
+          message: errorData.message || 'Error de registro'
         }
       })
     }
@@ -63,7 +71,7 @@ export default defineEventHandler(async (event) => {
     // Error genérico
     throw createError({
       statusCode: statusCode,
-      statusMessage: error.message || 'Error de autenticación',
+      statusMessage: error.message || 'Error de registro',
       data: {
         success: false,
         message: error.message || 'Error al conectar con el servidor'

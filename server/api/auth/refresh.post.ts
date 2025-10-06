@@ -29,8 +29,6 @@ export default defineEventHandler(async (event) => {
       }
     })
 
-    console.log('Refresh token response:', response)
-
     if (response.success && response.data?.access_token) {
       // Actualizar la sesión con el nuevo access_token
       const updatedSession = {
@@ -41,8 +39,6 @@ export default defineEventHandler(async (event) => {
       }
 
       await setUserSession(event, updatedSession)
-
-      console.log('✅ Access token renovado exitosamente')
 
       return {
         success: true,
@@ -59,8 +55,6 @@ export default defineEventHandler(async (event) => {
       }
     })
   } catch (error: any) {
-    console.error('Refresh token error:', error)
-    
     const statusCode = error.statusCode || 401
     const message = error.data?.message || error.message || 'Error renovando token'
     

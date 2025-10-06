@@ -29,6 +29,43 @@ export interface CreateTaskPayload {
   deadline?: string
 }
 
+// Respuesta del endpoint calendar
+export interface ApiCalendarResponse {
+  success: boolean
+  message: string
+  data: {
+    year: number
+    month: number
+    total_tasks: number
+    tasks: ApiTask[]
+  }
+}
+
+// Filtros para la API
+export interface TaskFilters {
+  sort_by?: 'created_at' | 'start_date' | 'deadline' | 'title' | 'status'
+  order?: 'asc' | 'desc'
+  status?: 'planificado' | 'en_progreso' | 'completado'
+  category?: string
+  start_date_from?: string
+  start_date_to?: string
+  deadline_from?: string
+  deadline_to?: string
+  created_from?: string
+  created_to?: string
+  search?: string
+}
+
+// Respuesta del endpoint categories
+export interface CategoryResponse {
+  success: boolean
+  message: string
+  data: {
+    category: string
+    count: number
+  }[]
+}
+
 // Mapeo de estados de la API a nuestros estados locales
 export const STATUS_MAP = {
   'planificado': 'planned',

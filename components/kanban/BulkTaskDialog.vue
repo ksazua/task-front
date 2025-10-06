@@ -3,13 +3,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
-import { Textarea } from '~/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
-import { useTasksStore, type Tag } from '~/stores/tasks'
-import { Plus, Trash2, Download, Upload } from 'lucide-vue-next'
+import { useTasksStore, type Tag, type TaskStatus } from '~/stores/tasks'
+import { Plus, Trash2, Download, Upload, Loader2 } from 'lucide-vue-next'
 import { nanoid } from 'nanoid'
 import dayjs from 'dayjs'
+import { toast } from 'vue-sonner'
 
 const props = defineProps<{
   open: boolean
@@ -25,6 +25,8 @@ interface BulkTaskRow {
   id: string
   title: string
   description: string
+  category: string
+  status: string
   startDate: string
   dueDate: string
   tagId: string
@@ -32,6 +34,49 @@ interface BulkTaskRow {
 
 const rows = ref<BulkTaskRow[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const isLoading = ref(false)
+
+const STATUS_FROM_API: Record<string, TaskStatus> = {
+  planificado: 'planned',
+  en_progreso: 'in_progress',
+  completado: 'done'
+}
+
+const normalizeStatus = (status: string): TaskStatus => {
+  const key = status.toLowerCase().trim()
+  return STATUS_FROM_API[key] ?? 'planned'
+}
+
+// Función helper para parsear líneas CSV con comillas
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    const nextChar = line[i + 1]
+    
+    if (char === '"' && !inQuotes) {
+      inQuotes = true
+    } else if (char === '"' && inQuotes) {
+      if (nextChar === '"') {
+        current += '"'
+        i++ // Skip next quote
+      } else {
+        inQuotes = false
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim().replace(/^"|"$/g, '')) // Remover comillas del inicio y final
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  
+  result.push(current.trim().replace(/^"|"$/g, '')) // Remover comillas del inicio y final
+  return result
+}
 
 // Inicializar con una fila vacía
 function initRows() {
@@ -39,6 +84,8 @@ function initRows() {
     id: nanoid(),
     title: '',
     description: '',
+    category: 'General',
+    status: 'planificado',
     startDate: dayjs().format('YYYY-MM-DD'),
     dueDate: '',
     tagId: 'all'
@@ -51,6 +98,8 @@ function addRow() {
     id: nanoid(),
     title: '',
     description: '',
+    category: 'General',
+    status: 'planificado',
     startDate: dayjs().format('YYYY-MM-DD'),
     dueDate: '',
     tagId: 'all'
@@ -65,37 +114,70 @@ function removeRow(id: string) {
 }
 
 // Guardar todas las tareas
-function saveAll() {
-  const validRows = rows.value.filter(r => r.title.trim())
-  
-  validRows.forEach(row => {
-    const tag = row.tagId !== 'all' ? tasks.tags.find(t => t.id === row.tagId) : undefined
-    
-    tasks.create({
-      title: row.title,
-      description: row.description || undefined,
-      startDate: row.startDate || undefined,
-      dueDate: row.dueDate || undefined,
-      tags: tag ? [tag] : [],
-      status: 'planned'
-    })
-  })
+const saveAll = async () => {
+  if (isLoading.value) return
 
-  initRows()
-  emit('close')
+  const validRows = rows.value.filter(row => row.title.trim())
+
+  if (validRows.length === 0) {
+    toast.error('Agrega al menos una tarea con título')
+    return
+  }
+
+  isLoading.value = true
+
+  try {
+    const results = await Promise.allSettled(validRows.map(row => {
+      const status = normalizeStatus(row.status)
+      const startDateIso = row.startDate ? dayjs(row.startDate).startOf('day').toISOString() : undefined
+      const dueDateIso = row.dueDate ? dayjs(row.dueDate).endOf('day').toISOString() : undefined
+
+      return tasks.create({
+        title: row.title.trim(),
+        description: row.description?.trim() || '',
+        category: row.category?.trim() || 'General',
+        status,
+        startDate: startDateIso,
+        dueDate: dueDateIso
+      })
+    }))
+
+    const fulfilled = results.filter(r => r.status === 'fulfilled').length
+    const rejected = results.length - fulfilled
+
+    if (fulfilled) {
+      toast.success(`Se guardaron ${fulfilled} tarea${fulfilled === 1 ? '' : 's'}`)
+    }
+
+    if (rejected) {
+      toast.error(`No se pudieron guardar ${rejected} tarea${rejected === 1 ? '' : 's'}`)
+    }
+
+    if (fulfilled) {
+      emit('close')
+    }
+
+    initRows()
+    if (fileInputRef.value) {
+      fileInputRef.value.value = ''
+    }
+  } catch (error) {
+    toast.error('Error al guardar tareas. Intenta nuevamente.')
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // Descargar plantilla CSV
 function downloadTemplate() {
-  const headers = ['Titulo', 'Descripcion', 'Fecha Inicio', 'Fecha Limite', 'Categoria']
-  const example = ['Ejemplo de tarea', 'Descripcion detallada', '2025-10-04', '2025-10-10', 'UI']
+  const examples = [
+    'title,description,category,status,start_date,deadline',
+    'Completar informe mensual,"Elaborar y enviar el informe de ventas","Trabajo","planificado","2025-10-10T09:00:00","2025-10-15T18:00:00"',
+    'Revisar presentación,"Preparar slides para reunión del lunes","Trabajo","en_progreso","2025-10-11T10:00:00","2025-10-16T17:00:00"',
+    'Comprar víveres,"Lista de compras para la semana","Personal","planificado","2025-10-12T15:00:00","2025-10-12T18:00:00"'
+  ]
   
-  const csv = [
-    headers.join(','),
-    example.join(','),
-    // Fila vacía para que empiecen a llenar
-    ',,,,'
-  ].join('\n')
+  const csv = examples.join('\n')
   
   // Agregar BOM UTF-8 para compatibilidad con Excel
   const BOM = '\uFEFF'
@@ -131,25 +213,39 @@ function parseCSV(text: string) {
   const newRows: BulkTaskRow[] = []
   
   dataLines.forEach(line => {
-    const columns = line.split(',').map(col => col.trim())
+    // Parsear CSV correctamente considerando comillas
+    const columns = parseCSVLine(line)
     
     if (!columns[0]) return // Saltar si no hay título
     
-    const [title, description, startDate, dueDate, categoryName] = columns
+    const [title, description, category, status, startDate, deadline] = columns
     
-    // Buscar tag por nombre
+    // Buscar tag por nombre de categoría
     let tagId = 'all'
-    if (categoryName) {
-      const tag = tasks.tags.find(t => t.name.toLowerCase() === categoryName.toLowerCase())
+    if (category) {
+      const tag = tasks.tags.find(t => t.name.toLowerCase() === category.toLowerCase())
       if (tag) tagId = tag.id
+    }
+
+    // Formatear fechas si vienen con tiempo ISO
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return ''
+      try {
+        const date = new Date(dateStr)
+        return dayjs(date).format('YYYY-MM-DD')
+      } catch {
+        return dateStr
+      }
     }
     
     newRows.push({
       id: nanoid(),
       title: title || '',
       description: description || '',
-      startDate: startDate || dayjs().format('YYYY-MM-DD'),
-      dueDate: dueDate || '',
+      category: category || 'General',
+      status: status || 'planificado',
+      startDate: formatDate(startDate) || dayjs().format('YYYY-MM-DD'),
+      dueDate: formatDate(deadline) || '',
       tagId
     })
   })
@@ -165,15 +261,23 @@ function triggerFileInput() {
 
 // Inicializar al abrir
 watch(() => props.open, (isOpen) => {
-  if (isOpen && rows.value.length === 0) {
-    initRows()
+  if (isOpen) {
+    if (rows.value.length === 0) {
+      initRows()
+    }
+  } else {
+    isLoading.value = false
   }
 })
+
+if (rows.value.length === 0) {
+  initRows()
+}
 </script>
 
 <template>
   <Dialog :open="open" @update:open="(val) => !val && emit('close')">
-    <DialogContent class="max-w-[95vw] w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <DialogContent class="max-w-[98vw] w-full max-h-[95vh] overflow-hidden flex flex-col">
       <DialogHeader>
         <DialogTitle>Crear tareas masivamente</DialogTitle>
         <DialogDescription>
@@ -194,12 +298,13 @@ watch(() => props.open, (isOpen) => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead class="w-[200px]">Título*</TableHead>
-                    <TableHead class="w-[250px]">Descripción</TableHead>
-                    <TableHead class="w-[150px]">Fecha Inicio</TableHead>
-                    <TableHead class="w-[150px]">Fecha Límite</TableHead>
-                    <TableHead class="w-[150px]">Categoría</TableHead>
-                    <TableHead class="w-[60px]"></TableHead>
+                    <TableHead class="w-[250px]">Título*</TableHead>
+                    <TableHead class="w-[300px]">Descripción</TableHead>
+                    <TableHead class="w-[140px]">Categoría</TableHead>
+                    <TableHead class="w-[140px]">Status</TableHead>
+                    <TableHead class="w-[160px]">Fecha Inicio</TableHead>
+                    <TableHead class="w-[160px]">Fecha Límite</TableHead>
+                    <TableHead class="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -222,6 +327,29 @@ watch(() => props.open, (isOpen) => {
                       />
                     </TableCell>
 
+                    <!-- Categoría -->
+                    <TableCell>
+                      <Input 
+                        v-model="row.category" 
+                        placeholder="General" 
+                        class="w-full"
+                      />
+                    </TableCell>
+
+                    <!-- Status -->
+                    <TableCell>
+                      <Select v-model="row.status">
+                        <SelectTrigger class="w-full">
+                          <SelectValue placeholder="planificado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="planificado">Planificado</SelectItem>
+                          <SelectItem value="en_progreso">En Progreso</SelectItem>
+                          <SelectItem value="completado">Completado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+
                     <!-- Fecha Inicio -->
                     <TableCell>
                       <Input 
@@ -239,21 +367,6 @@ watch(() => props.open, (isOpen) => {
                         :min="row.startDate"
                         class="w-full"
                       />
-                    </TableCell>
-
-                    <!-- Categoría -->
-                    <TableCell>
-                      <Select v-model="row.tagId">
-                        <SelectTrigger class="w-full">
-                          <SelectValue placeholder="Ninguna" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Ninguna</SelectItem>
-                          <SelectItem v-for="tag in tasks.tags" :key="tag.id" :value="tag.id">
-                            {{ tag.name }}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
                     </TableCell>
 
                     <!-- Acciones -->
@@ -280,7 +393,8 @@ watch(() => props.open, (isOpen) => {
             </Button>
             <div class="flex gap-2">
               <Button variant="outline" @click="emit('close')">Cancelar</Button>
-              <Button @click="saveAll" :disabled="!rows.some(r => r.title.trim())">
+              <Button @click="saveAll" :disabled="isLoading || !rows.some(r => r.title.trim())">
+                <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
                 Guardar todas
               </Button>
             </div>
@@ -334,7 +448,8 @@ watch(() => props.open, (isOpen) => {
                 </div>
                 <div class="flex gap-2 mt-4">
                   <Button variant="outline" @click="initRows()">Limpiar</Button>
-                  <Button @click="saveAll">
+                  <Button @click="saveAll" :disabled="isLoading || !rows.filter(r => r.title).length">
+                    <Loader2 v-if="isLoading" class="mr-2 h-4 w-4 animate-spin" />
                     Guardar {{ rows.filter(r => r.title).length }} tareas
                   </Button>
                 </div>

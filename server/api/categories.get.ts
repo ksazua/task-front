@@ -1,21 +1,20 @@
 import { getUserSession } from '~/server/utils/session'
-import type { ApiTasksResponse } from '~/types/api'
+import type { CategoryResponse } from '~/types/api'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  const taskId = getRouterParam(event, 'id')
-  
+
   try {
     const session = await getUserSession(event)
-    
+
     if (!session?.accessToken) {
       throw createError({
         statusCode: 401,
-        statusMessage: 'No autorizado - Token requerido'
+        statusMessage: 'No autorizado - Token requerido',
       })
     }
 
-    const apiUrl = `${config.public.apiBase}/tasks/${taskId}`
+    const apiUrl = `${config.public.apiBase}/tasks/categories`
     const headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -23,23 +22,24 @@ export default defineEventHandler(async (event) => {
       'User-Agent': 'Nuxt-Task-Frontend',
       'X-Requested-With': 'XMLHttpRequest',
     }
-    
-    const response = await $fetch<ApiTasksResponse>(apiUrl, {
-      method: 'DELETE',
-      headers
+
+    const response = await $fetch<CategoryResponse>(apiUrl, {
+      method: 'GET',
+      headers,
     })
+
     return response
   } catch (error: any) {
     const statusCode = error.statusCode || error.response?.status || 500
-    const errorMessage = error.message || error.data?.message || 'Error al eliminar tarea'
-    
+    const errorMessage = error.message || error.data?.message || 'Error al obtener categorías'
+
     throw createError({
       statusCode,
       statusMessage: errorMessage,
       data: {
         success: false,
-        message: errorMessage
-      }
+        message: errorMessage,
+      },
     })
   }
 })

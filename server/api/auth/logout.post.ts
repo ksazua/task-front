@@ -10,8 +10,6 @@ export default defineEventHandler(async (event) => {
       message: 'Sesión cerrada exitosamente'
     }
   } catch (error: any) {
-    console.error('Logout error:', error)
-    
     return {
       success: false,
       message: 'Error al cerrar sesión'

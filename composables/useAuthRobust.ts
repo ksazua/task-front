@@ -8,8 +8,6 @@ export const useAuthRobust = () => {
   const checkSession = async (retries = 3): Promise<boolean> => {
     for (let i = 0; i < retries; i++) {
       try {
-        console.log(`🔍 Intento ${i + 1} de verificar sesión`)
-        
         const response = await $fetch('/api/auth/session', {
           credentials: 'include',
           headers: {
@@ -19,14 +17,10 @@ export const useAuthRobust = () => {
 
         if (response?.success && response?.isAuthenticated) {
           user.value = response.user
-          console.log('✅ Sesión válida encontrada')
           return true
         }
       } catch (error: any) {
-        console.warn(`❌ Intento ${i + 1} falló:`, error.message)
-        
         if (i === retries - 1) {
-          console.error('❌ Todos los intentos fallaron')
           user.value = null
           return false
         }
@@ -44,8 +38,6 @@ export const useAuthRobust = () => {
     isLoading.value = true
     
     try {
-      console.log('🔐 Intentando login...')
-      
       const response = await $fetch('/api/auth/login', {
         method: 'POST',
         body: credentials,
@@ -54,13 +46,11 @@ export const useAuthRobust = () => {
 
       if (response?.success) {
         user.value = response.user
-        console.log('✅ Login exitoso')
         return { success: true, user: response.user }
       } else {
         throw new Error(response?.message || 'Login failed')
       }
     } catch (error: any) {
-      console.error('❌ Login error:', error)
       user.value = null
       throw error
     } finally {
@@ -76,7 +66,7 @@ export const useAuthRobust = () => {
         credentials: 'include'
       })
     } catch (error) {
-      console.warn('Error en logout:', error)
+      // Error silencioso en logout
     } finally {
       user.value = null
       await navigateTo('/login')

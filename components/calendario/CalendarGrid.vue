@@ -55,13 +55,28 @@ const calendarDays = computed(() => {
 
 function getTasksForDate(date: string): Task[] {
   return tasks.tasks.filter((task: Task) => {
-    if (!task.startDate || !task.dueDate) return false
+    // Si la tarea tiene fecha de inicio, verificar si coincide con la fecha
+    if (task.startDate) {
+      const taskStart = dayjs(task.startDate)
+      if (taskStart.format('YYYY-MM-DD') === date) return true
+    }
     
-    const taskStart = dayjs(task.startDate)
-    const taskEnd = dayjs(task.dueDate)
-    const currentDate = dayjs(date)
+    // Si la tarea tiene fecha límite, verificar si coincide con la fecha
+    if (task.dueDate) {
+      const taskDue = dayjs(task.dueDate)
+      if (taskDue.format('YYYY-MM-DD') === date) return true
+    }
     
-    return currentDate.isSameOrAfter(taskStart, 'day') && currentDate.isSameOrBefore(taskEnd, 'day')
+    // Si tiene ambas fechas, verificar si la fecha está en el rango
+    if (task.startDate && task.dueDate) {
+      const taskStart = dayjs(task.startDate)
+      const taskEnd = dayjs(task.dueDate)
+      const currentDate = dayjs(date)
+      
+      return currentDate.isSameOrAfter(taskStart, 'day') && currentDate.isSameOrBefore(taskEnd, 'day')
+    }
+    
+    return false
   })
 }
 

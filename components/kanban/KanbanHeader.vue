@@ -7,6 +7,7 @@ import { Search, Plus, ChevronRight, ListPlus } from 'lucide-vue-next'
 
 const props = defineProps<{
   searchQuery: string
+  breadcrumbTitle?: string
 }>()
 
 const emit = defineEmits<{
@@ -23,12 +24,8 @@ const emit = defineEmits<{
       <SidebarTrigger class="-ml-1" />
       <Separator orientation="vertical" class="h-5 hidden sm:block" />
       <nav class="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm overflow-hidden">
-        <a href="#" class="text-muted-foreground hover:text-foreground transition-colors truncate">
-          Intex Company
-        </a>
-        <ChevronRight :size="14" class="text-muted-foreground shrink-0" />
         <span class="font-semibold text-foreground truncate">
-          Design for Landing Page
+          {{ breadcrumbTitle || 'Tablero' }}
         </span>
       </nav>
     </div>
@@ -40,13 +37,13 @@ const emit = defineEmits<{
         <Input 
           :model-value="searchQuery"
           @update:model-value="(val) => emit('update:searchQuery', String(val))"
-          placeholder="Search..." 
+          placeholder="Busqueda inteligente" 
           class="pl-8 w-full sm:w-48 md:w-60 h-9"
         />
       </div>
       <Button @click="emit('bulkCreate')" size="sm" variant="outline" class="shrink-0">
         <ListPlus :size="16" class="sm:mr-1.5"/> 
-        <span class="hidden sm:inline">Bulk Create</span>
+        <span class="hidden sm:inline">Creacion masiva</span>
       </Button>
       <Button @click="emit('createTask')" size="sm" class="shrink-0">
         <Plus :size="16" class="sm:mr-1.5"/> 

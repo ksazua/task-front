@@ -1,9 +1,9 @@
 import { getUserSession } from '~/server/utils/session'
-import type { ApiTasksResponse, CreateTaskPayload } from '~/types/api'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  const body = await readBody(event) as CreateTaskPayload
+  const year = getRouterParam(event, 'year')
+  const month = getRouterParam(event, 'month')
   
   try {
     const session = await getUserSession(event)
@@ -15,17 +15,14 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Preparar datos en el formato que espera el backend
-    const taskData = {
-      title: body.title,
-      description: body.description || "",
-      category: body.category || "General",
-      status: body.status || "planificado",
-      start_date: body.start_date || new Date().toISOString(),
-      deadline: body.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    if (!year || !month) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Year y month son requeridos'
+      })
     }
 
-    const apiUrl = `${config.public.apiBase}/tasks/`
+    const apiUrl = `${config.public.apiBase}/tasks/calendar/${year}/${month}`
     const headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -34,16 +31,15 @@ export default defineEventHandler(async (event) => {
       'X-Requested-With': 'XMLHttpRequest',
     }
     
-    const response = await $fetch<ApiTasksResponse>(apiUrl, {
-      method: 'POST',
+    const response = await $fetch(apiUrl, {
+      method: 'GET',
       headers,
-      body: taskData
     })
 
     return response
   } catch (error: any) {
     const statusCode = error.statusCode || error.response?.status || 500
-    const errorMessage = error.message || error.data?.message || 'Error al crear tarea'
+    const errorMessage = error.message || error.data?.message || 'Error al obtener tareas del calendario'
     
     throw createError({
       statusCode,

@@ -3,18 +3,36 @@ import { Card, CardContent } from '~/components/ui/card'
 import TagChip from './TagChip.vue'
 import { type Task } from '~/stores/tasks'
 import dayjs from 'dayjs'
-import { Calendar } from 'lucide-vue-next'
+import { Calendar, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps<{ task: Task }>()
 const emit = defineEmits<{ (e:'edit', task: Task):void; (e:'delete', id:string):void }>()
+
+function onDelete(e: Event) {
+  e.stopPropagation() // Evitar que se abra el diálogo de edición
+  emit('delete', props.task.id)
+}
+
+function onEdit() {
+  emit('edit', props.task)
+}
 </script>
 
 <template>
-  <Card class="rounded-xl sm:rounded-2xl border bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer" @click="emit('edit', task)">
-    <CardContent class="p-3 sm:p-4 space-y-2 sm:space-y-3">
+  <Card class="rounded-xl sm:rounded-2xl border bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer group" @click="onEdit">
+    <CardContent class="p-3 sm:p-4 space-y-2 sm:space-y-3 relative">
+      <!-- Botón eliminar -->
+      <button 
+        @click="onDelete"
+        class="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all duration-200 z-10"
+        title="Eliminar tarea"
+      >
+        <Trash2 :size="14" />
+      </button>
+
       <!-- header: título, categoría y descripción -->
       <div>
-        <div class="flex items-start justify-between gap-2">
+        <div class="flex items-start justify-between gap-2 pr-6">
           <h4 class="font-semibold text-xs sm:text-sm leading-tight text-gray-900 flex-1">{{ task.title }}</h4>
           <span v-if="task.category" class="text-[10px] sm:text-[11px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-md whitespace-nowrap">
             {{ task.category }}

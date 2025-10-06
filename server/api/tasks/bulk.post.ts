@@ -1,9 +1,13 @@
 import { getUserSession } from '~/server/utils/session'
 import type { ApiTasksResponse, CreateTaskPayload } from '~/types/api'
 
+interface BulkTaskPayload {
+  tasks: CreateTaskPayload[]
+}
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  const body = await readBody(event) as CreateTaskPayload
+  const body = await readBody(event) as BulkTaskPayload
   
   try {
     const session = await getUserSession(event)
@@ -15,17 +19,27 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Preparar datos en el formato que espera el backend
-    const taskData = {
-      title: body.title,
-      description: body.description || "",
-      category: body.category || "General",
-      status: body.status || "planificado",
-      start_date: body.start_date || new Date().toISOString(),
-      deadline: body.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    // Validar que se enviaron tareas
+    if (!body.tasks || !Array.isArray(body.tasks) || body.tasks.length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Se requiere un array de tareas no vacío'
+      })
     }
 
-    const apiUrl = `${config.public.apiBase}/tasks/`
+    // Preparar datos en el formato que espera el backend
+    const bulkData = {
+      tasks: body.tasks.map(task => ({
+        title: task.title,
+        description: task.description || "",
+        category: task.category || "General",
+        status: task.status || "planificado",
+        start_date: task.start_date || new Date().toISOString(),
+        deadline: task.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      }))
+    }
+
+    const apiUrl = `${config.public.apiBase}/tasks/bulk`
     const headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -37,13 +51,13 @@ export default defineEventHandler(async (event) => {
     const response = await $fetch<ApiTasksResponse>(apiUrl, {
       method: 'POST',
       headers,
-      body: taskData
+      body: bulkData
     })
 
     return response
   } catch (error: any) {
     const statusCode = error.statusCode || error.response?.status || 500
-    const errorMessage = error.message || error.data?.message || 'Error al crear tarea'
+    const errorMessage = error.message || error.data?.message || 'Error al crear tareas en masa'
     
     throw createError({
       statusCode,
