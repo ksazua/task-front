@@ -1,4 +1,5 @@
 import { getUserSession } from '~/server/utils/session'
+import { fetchFromRailway } from '~/server/utils/railway'
 import type { ApiTasksResponse, CreateTaskPayload } from '~/types/api'
 
 export default defineEventHandler(async (event) => {
@@ -26,14 +27,7 @@ export default defineEventHandler(async (event) => {
     const apiUrl = `${config.public.apiBase}/tasks/${taskId}`
     console.log('🔗 Updating task at:', apiUrl)
     
-    const response = await $fetch<ApiTasksResponse>(apiUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.accessToken}`
-      },
-      body
-    })
+    const response = await fetchFromRailway(apiUrl, session.accessToken, 'PUT', body) as ApiTasksResponse
 
     console.log('✅ Task updated successfully:', response)
     return response

@@ -8,14 +8,31 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     if (process.server) {
       // ✅ En SSR: usa los headers del request, para incluir cookies reales
       const headers = useRequestHeaders(['cookie'])
+      console.log('🔍 Middleware SSR - Headers:', headers)
+      console.log('🔍 Middleware SSR - Route:', to.path)
+      
       session = await $fetch('/api/auth/session', {
         headers,
         credentials: 'include'
       })
+      
+      console.log('🔍 Middleware SSR - Session result:', {
+        success: session?.success,
+        isAuthenticated: session?.isAuthenticated,
+        hasUser: !!session?.user
+      })
     } else {
       // ✅ En cliente: solo intenta si ya está montado
+      console.log('🔍 Middleware Client - Route:', to.path)
+      
       session = await $fetch('/api/auth/session', {
         credentials: 'include'
+      })
+      
+      console.log('🔍 Middleware Client - Session result:', {
+        success: session?.success,
+        isAuthenticated: session?.isAuthenticated,
+        hasUser: !!session?.user
       })
     }
 

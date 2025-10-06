@@ -1,4 +1,5 @@
 import { getUserSession } from '~/server/utils/session'
+import { fetchFromRailway } from '~/server/utils/railway'
 import type { ApiTasksResponse } from '~/types/api'
 
 export default defineEventHandler(async (event) => {
@@ -24,13 +25,7 @@ export default defineEventHandler(async (event) => {
     const apiUrl = `${config.public.apiBase}/tasks/${taskId}`
     console.log('🔗 Deleting task at:', apiUrl)
     
-    const response = await $fetch<ApiTasksResponse>(apiUrl, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.accessToken}`
-      }
-    })
+    const response = await fetchFromRailway(apiUrl, session.accessToken, 'DELETE') as ApiTasksResponse
 
     console.log('✅ Task deleted successfully:', response)
     return response
